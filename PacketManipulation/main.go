@@ -9,7 +9,7 @@ import (
 )
 
 var (
-	device        = "WiFi"
+	device        = "\\Device\\NPF_{3F8A9504-56D8-4316-B344-89262D14817D}"
 	snaplen int32 = 65535
 	promisc       = false
 	err     error
@@ -36,4 +36,20 @@ func main() {
 		fmt.Println("Ping:")
 		fmt.Println(packet)
 	}
+
+	// devices, err := pcap.FindAllDevs()
+    // if err != nil {
+    //     log.Fatal(err)
+    // }
+
+    // fmt.Println("Devices found:")
+    // for _, device := range devices {
+    //     fmt.Println("\nName: ", device.Name)
+    //     fmt.Println("Description: ", device.Description)
+    //     fmt.Println("Devices addresses: ", device.Description)
+    //     for _, address := range device.Addresses {
+    //         fmt.Println("- IP address: ", address.IP)
+    //         fmt.Println("- Subnet mask: ", address.Netmask)
+    //     }
+    // }
 }
