@@ -1,13 +1,13 @@
 package main
 
 import (
-	"github.com/google/gopacket/layers"
 	"fmt"
 	"github.com/google/gopacket"
+	"github.com/google/gopacket/layers"
 	"github.com/google/gopacket/pcap"
 	"log"
-	"time"
 	"os"
+	"time"
 )
 
 var (
@@ -39,15 +39,52 @@ func main() {
 	packetsource := gopacket.NewPacketSource(handle, handle.LinkType())
 
 	for packet := range packetsource.Packets() {
-		fmt.Println("Ping:")
-		fmt.Println(packet)
 
-		fmt.Println("---------------")
+		ethernetLayer := packet.Layer(layers.LayerTypeEthernet)
+		ethernetFrame := ethernetLayer.(*layers.Ethernet)
 
 		ipLayer := packet.Layer(layers.LayerTypeIPv4)
 		ipPacket, _ := ipLayer.(*layers.IPv4)
 		icmpLayer := packet.Layer(layers.LayerTypeICMPv4)
 		icmpPacket := icmpLayer.(*layers.ICMPv4)
+
+		if icmpPacket.TypeCode.String() == "EchoRequest" {
+			if len(icmpPacket.Payload) > 0 {
+				log.Println("Info: EchoRequest recieved")
+			} else {
+				log.Println("Warn: Empty EchoRequest recieved")
+				ethernetFrameCopy := *ethernetFrame
+				ipPacketCopy := *ipPacket
+				icmpPacketCopy := *icmpPacket
+
+				ethernetFrameCopy.SrcMAC = ethernetFrame.DstMAC
+				ethernetFrameCopy.DstMAC = ethernetFrame.SrcMAC
+
+				ipPacketCopy.SrcIP = ipPacket.DstIP
+				ipPacketCopy.DstIP = ipPacket.SrcIP
+
+				icmpPacketCopy.TypeCode = layers.ICMPv4TypeEchoReply
+
+				var buffer gopacket.SerializeBuffer
+				var options gopacket.SerializeOptions
+				options.ComputeChecksums = true
+
+				buffer = gopacket.NewSerializeBuffer()
+				gopacket.SerializeLayers(buffer,
+					options,
+					&ethernetFrameCopy,
+					&ipPacketCopy,
+					&icmpPacketCopy,
+					gopacket.Payload(icmpPacketCopy.Payload))
+
+				newMessage := buffer.Bytes()
+				err = handle.WritePacketData(newMessage)
+				if err != nil {
+					log.Fatal(err)
+				}
+
+			}
+		}
 
 		fmt.Println("Source: " + ipPacket.SrcIP.String())
 		fmt.Println("Destination: " + ipPacket.DstIP.String())
